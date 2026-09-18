@@ -1,0 +1,22 @@
+# Compilation artifacts
+build/
+*.elf
+*.bin
+*.hex
+*.map
+*.o
+*.obj
+
+# IDE folders
+.vscode/
+.idea/
+.settings/
+.project/
+.cproject/
+MDK-ARM/
+EWARM/
+GD32EBuilder_project/
+
+# OS files
+.DS_Store
+Thumbs.db
