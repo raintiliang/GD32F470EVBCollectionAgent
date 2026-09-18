@@ -1,0 +1,15 @@
+# MAATS Project Version History
+
+## [V1.0.0] - 2026-09-18
+### Added
+- Initial project framework for GD32F470Z_EVAL.
+- CMake build system integrated with arm-none-eabi toolchain.
+- FreeRTOS Kernel 11.2.0 integration.
+- 7 core system tasks: Sensor, Actuator, Control, Storage, Comm, Display, KeyScan.
+- Project documentation: SRS, SRS_Detail, Test Plans, GANTT.
+- Professional README.md file.
+
+### Fixed
+- FreeRTOS interrupt handler conflicts (SVC_Handler, PendSV_Handler).
+- Undefined symbol 'flag' error in gd32f4xx_it.c.
+- Toolchain path and standard library linking issues.
