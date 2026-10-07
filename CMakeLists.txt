@@ -1,4 +1,5 @@
 cmake_minimum_required(VERSION 3.10)
+include(../gcc_arm.cmake) # 参考我之前给你的交叉编译配置 
 
 # Project Name
 project(MAATS_ColletAgent C ASM)
@@ -9,12 +10,6 @@ set(CMAKE_C_STANDARD 99)
 # Core definitions
 add_definitions(-DGD32F470)
 add_definitions(-DUSE_STDPERIPH_DRIVER)
-
-# MCU Flags: Cortex-M4 with FPU
-set(MCU_FLAGS "-mcpu=cortex-m4 -mthumb -mfpu=fpv4-sp-d16 -mfloat-abi=hard")
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${MCU_FLAGS} -Wall -fdata-sections -ffunction-sections")
-set(CMAKE_ASM_FLAGS "${CMAKE_ASM_FLAGS} ${MCU_FLAGS} -x assembler-with-cpp")
-set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${MCU_FLAGS} -Wl,--gc-sections --specs=nano.specs --specs=nosys.specs")
 
 # Paths
 set(PROJ_DIR "/home/rainti/project/GD32F4xx_Demo_Suites/GD32470Z_EVAL_Demo_Suites/Projects/29_MY_ColletAgent")
@@ -53,7 +48,7 @@ file(GLOB FREERTOS_SOURCES
 set(STARTUP_FILE "${FW_DIR}/CMSIS/GD/GD32F4xx/Source/GCC/startup_gd32f450_470.S")
 
 # Linker script
-set(LINKER_SCRIPT "${FW_DIR}/CMSIS/GD/GD32F4xx/Source/GCC/Ld/gd32f470xI_flash.ld")
+set(LINKER_SCRIPT "${SDK_ROOT}/CMSIS/GD/GD32F4xx/Source/GCC/Ld/gd32f470xK_flash.ld")
 set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -T ${LINKER_SCRIPT}")
 
 # Executable

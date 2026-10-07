@@ -5,6 +5,8 @@
 #include "FreeRTOS.h"
 #include "task.h"
 
+#include "co2_sensor.h"
+
 /* Task Priorities */
 #define KEY_SCAN_TASK_PRIO    ( tskIDLE_PRIORITY + 5 )
 #define DISPLAY_TASK_PRIO     ( tskIDLE_PRIORITY + 5 )
@@ -33,7 +35,9 @@ void vStorageTask(void *pvParameters);
 void vCommTask(void *pvParameters);
 
 void hardware_init(void) {
-    /* TODO: Init GPIO, UART, I2C, SPI, RS485 */
+    /* Init S8-005 CO2 Sensor on UART3 */
+    co2_sensor_init();
+    /* TODO: Init GPIO, I2C, SPI, RS485 */
 }
 
 int main(void) {
@@ -66,7 +70,13 @@ void vDisplayTask(void *pvParameters) {
 }
 
 void vSensorTask(void *pvParameters) {
+    co2_data_t sensor_data;
     for(;;) {
+        /* Periodically poll for frame processing (in a real app, this might wait for a semaphore) */
+        if (co2_sensor_parse(rx_buffer, &sensor_data) == 0) {
+            printf("CO2: %d ppm, T: %.1f C, H: %.1f %%\r\n", 
+                    sensor_data.co2_ppm, sensor_data.temperature, sensor_data.humidity);
+        }
         vTaskDelay(pdMS_TO_TICKS(1000));
     }
 }

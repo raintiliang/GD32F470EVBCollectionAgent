@@ -33,8 +33,9 @@ OF SUCH DAMAGE.
 */
 
 #include "gd32f4xx_it.h"
+#include "co2_sensor.h"
 
-// extern volatile uint8_t flag;
+// #if 0
 
 /*!
     \brief      this function handles NMI exception
@@ -145,15 +146,15 @@ void PendSV_Handler(void)
 #endif
 
 /*!
-    \brief      this function handles external lines 10 to 15 interrupt request
+    \brief      this function handles UART3 interrupt request
     \param[in]  none
     \param[out] none
     \retval     none
 */
-void EXTI10_15_IRQHandler(void)
+void UART3_IRQHandler(void)
 {
-    if(RESET != exti_interrupt_flag_get(EXTI_13)){
-        // flag = 1;
+    if(RESET != usart_interrupt_flag_get(UART3, USART_INT_FLAG_RBNE)){
+        uint8_t ch = usart_data_receive(UART3);
+        co2_sensor_rx_handler(ch);
     }
-    exti_interrupt_flag_clear(EXTI_13);
 }
