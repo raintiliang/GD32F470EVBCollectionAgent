@@ -20,9 +20,9 @@ void CO2_Sensor_Init(void) {
     gpio_mode_set(GPIOA, GPIO_MODE_AF, GPIO_PUPD_PULLUP, GPIO_PIN_10);
     gpio_output_options_set(GPIOA, GPIO_OTYPE_PP, GPIO_OSPEED_50MHZ, GPIO_PIN_10);
 
-    /* 3. USART 参数配置: 9600bps, 8N1 */
+    /* 3. USART 参数配置: 115200bps, 8N1 */
     usart_deinit(USART0);
-    usart_baudrate_set(USART0, 9600U);
+    usart_baudrate_set(USART0, 115200U);
     usart_receive_config(USART0, USART_RECEIVE_ENABLE);
     usart_transmit_config(USART0, USART_TRANSMIT_ENABLE);
     
