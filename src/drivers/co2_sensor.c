@@ -3,7 +3,28 @@
 #include <string.h>
 #include <stdlib.h>
 
+#define FILTER_SIZE 10
+
 static CO2_Data_t current_sensor_data = {0};
+static float co2_filter_buf[FILTER_SIZE] = {0};
+static int filter_index = 0;
+static bool filter_full = false;
+
+/**
+ * @brief 对 CO2 浓度进行滑动平均滤波
+ */
+static float Apply_CO2_Filter(float new_val) {
+    co2_filter_buf[filter_index] = new_val;
+    filter_index = (filter_index + 1) % FILTER_SIZE;
+    if (filter_index == 0) filter_full = true;
+
+    int count = filter_full ? FILTER_SIZE : filter_index;
+    float sum = 0;
+    for (int i = 0; i < count; i++) {
+        sum += co2_filter_buf[i];
+    }
+    return sum / count;
+}
 
 void CO2_Sensor_Init(void) {
     /* 1. 开启 GPIO 和 USART 时钟 */
@@ -41,10 +62,13 @@ bool CO2_Sensor_ParseFrame(const char *frame, CO2_Data_t *data) {
     int count = sscanf(frame, "%d %f %f %f", &id, &co2, &temp, &hum);
     
     if (count == 4) {
-        data->co2_ppm = co2;
+        data->co2_ppm = Apply_CO2_Filter(co2);
         data->temperature = temp;
         data->humidity = hum;
         data->is_valid = true;
+        
+        // 更新全局最新数据
+        memcpy(&current_sensor_data, data, sizeof(CO2_Data_t));
         return true;
     }
 
