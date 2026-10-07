@@ -1,0 +1,4 @@
+Production Facility:      Series production in accordance with ISO 26262:2018 part/7 is the
+responsibility of the certificate holder and is not part of this
+certificate
+

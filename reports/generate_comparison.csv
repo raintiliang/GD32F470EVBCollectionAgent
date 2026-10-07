@@ -1,0 +1,12 @@
+Accelerator / 平台名称,Perf vs H100,Perf vs H200,Price-Perf,LLM Training,AI Inference,Deployment Challenges,Ecosystem Maturity,Strengths & Shortcomings
+NVIDIA H100,100% (Baseline),70%,Medium,High,High,Supply chain limits,Very High (CUDA),"Pro: Industry standard; Con: 80GB VRAM"
+NVIDIA H200,160%+,100% (Baseline),Medium,High,High,High cost,Very High (CUDA),"Pro: 141GB HBM3e; Con: Price"
+AMD MI325X,150-200%,120-140%,High,Med-High,High,ROCm migration,Medium,"Pro: 256GB HBM3e; Con: Interconnect"
+Intel Gaudi 3,100-110%,80-90%,Very High,Med-High,High,OneAPI adaptation,Medium,"Pro: Cost leader; Con: Peak TFLOPS"
+Google TPU v5p,80-115%,60-80%,High,High,Med-High,GCP platform lock,High (JAX/XLA),"Pro: Scalability; Con: No on-premise"
+Huawei Ascend 910C,80-100%,60-70%,High (CN),Med-High,High,CANN platform,Medium (CANN),"Pro: Local support; Con: Sanctions"
+Groq LPU,300-500%,200-300%,Very High,Low,Very High,Small memory pooling,Medium,"Pro: Low Latency; Con: Low Capacity"
+Cerebras CS-3,2000%+,1200%+,High,Very High,Very High,Specialized HW,Medium,"Pro: Wafer-scale; Con: Power/Price"
+SambaNova SN40L,150-250%,120-150%,High,Low,High,Expert pathing,Low-Med,"Pro: 12TB Memory; Con: No Training"
+Tenstorrent Blackhole,70-80%,60-70%,Very High,Medium,High,Early dev tools,Low (BUDA),"Pro: RISC-V Architecture; Con: Bandwidth"
+Biren BR100,60-80%,< 50%,High (CN),Medium,Medium,Export controls,Low-Med,"Pro: Strong FP16; Con: No FP8"

@@ -1,0 +1,94 @@
+-- ============================================================================
+-- Boundary Scan Description Language (BSDL) File
+-- Device       : GD32G553 (Cortex-M33 Core)
+-- IDCODE       : 0x0BEAD1D3
+-- Created for  : 霆宇 / rainti
+-- Tool Support : JTAGLive, ProVision, AEX Manager, TopJTAG
+-- ============================================================================
+
+entity GD32G553 is
+    generic (PHYSICAL_PIN_MAP : string := "LQFP100");
+
+    port (
+        -- Standard JTAG IEEE 1149.1 Ports
+        TCK      : in bit;
+        TMS      : in bit;
+        TDI      : in bit;
+        TDO      : out bit;
+        NJTRST   : in bit;
+
+        -- Power & Ground (Linkage Ports)
+        VDD      : linkage bit_vector(0 to 4);
+        VSS      : linkage bit_vector(0 to 4);
+
+        -- Standard GPIO Ports (LQFP100 Representative)
+        PA0, PA1, PA2, PA3, PA4, PA5, PA6, PA7  : inout bit;
+        PA8, PA9, PA10, PA11, PA12, PA15        : inout bit;
+        PB0, PB1, PB2, PB5, PB6, PB7, PB8, PB9  : inout bit;
+        PB10, PB11, PB12, PB13, PB14, PB15      : inout bit;
+        PC0, PC1, PC2, PC3, PC4, PC5, PC6, PC7  : inout bit;
+        PC8, PC9, PC10, PC11, PC12, PC13, PC14  : inout bit;
+        PD0, PD1, PD2, PD3, PD4, PD5, PD6, PD7  : inout bit
+    );
+
+    use STD_1149_1_2001.all;
+
+    attribute COMPONENT_CONFORMANCE of GD32G553 : entity is "std_1149_1_2001";
+    attribute PIN_MAP of GD32G553 : entity is PHYSICAL_PIN_MAP;
+
+    -- Pinout Assignment for LQFP100 Package
+    constant LQFP100: PIN_MAP_STRING :=
+        -- JTAG Interface Pins
+        "TCK:76, TMS:72, TDI:77, TDO:89, NJTRST:90, " &
+        
+        -- Power & Ground
+        "VDD:(11, 28, 50, 75, 100), " &
+        "VSS:(10, 27, 49, 74, 99), " &
+
+        -- Port A
+        "PA0:23, PA1:24, PA2:25, PA3:26, PA4:29, PA5:30, PA6:31, PA7:32, " &
+        "PA8:67, PA9:68, PA10:69, PA11:70, PA12:71, PA15:77, " &
+
+        -- Port B
+        "PB0:35, PB1:36, PB2:37, PB5:91, PB6:92, PB7:93, PB8:95, PB9:96, " &
+        "PB10:47, PB11:48, PB12:51, PB13:52, PB14:53, PB15:54, " &
+
+        -- Port C
+        "PC0:15, PC1:16, PC2:17, PC3:18, PC4:33, PC5:34, PC6:63, PC7:64, " &
+        "PC8:65, PC9:66, PC10:78, PC11:79, PC12:80, PC13:7, PC14:8, " &
+
+        -- Port D
+        "PD0:81, PD1:82, PD2:83, PD3:84, PD4:85, PD5:86, PD6:87, PD7:88";
+
+    attribute TAP_SCAN_CLOCK of TCK : signal is (10.0e6, BOTH);
+    attribute TAP_SCAN_IN    of TDI : signal is true;
+    attribute TAP_SCAN_MODE  of TMS : signal is true;
+    attribute TAP_SCAN_OUT   of TDO : signal is true;
+
+    attribute INSTRUCTION_LENGTH of GD32G553 : entity is 4;
+
+    attribute INSTRUCTION_OPCODE of GD32G553 : entity is
+        "BYPASS  (1111)," &
+        "EXTEST  (0000)," &
+        "SAMPLE  (0001)," &
+        "PRELOAD (0001)," &
+        "IDCODE  (1110)";
+
+    attribute INSTRUCTION_CAPTURE of GD32G553 : entity is "0001";
+
+    -- Matches the TAP ID 0x0BEAD1D3 detected by JTAGLive
+    attribute IDCODE_REGISTER of GD32G553 : entity is
+        "0000" &               -- Version
+        "1011111010101101" &   -- Part Number (0xBEAD)
+        "00011101001" &        -- Manufacturer (GigaDevice / ARM TAP)
+        "1";                   -- Mandatory
+
+    attribute REGISTER_ACCESS of GD32G553 : entity is
+        "DEVICE_ID (IDCODE)," &
+        "BYPASS    (BYPASS)";
+
+    attribute BOUNDARY_LENGTH of GD32G553 : entity is 1;
+    attribute BOUNDARY_REGISTER of GD32G553 : entity is
+        "0 (BC_1, *, internal, 0)";
+
+end GD32G553;

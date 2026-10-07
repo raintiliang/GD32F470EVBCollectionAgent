@@ -1,0 +1,471 @@
+/**
+ * @file platform_ingenic.c
+ * @brief Platform-specific implementation for Ingenic T31 platform
+ * 
+ * This file implements the HAL interface using Ingenic's IMP (Ingenic Media Platform) API.
+ * 
+ * @version 1.0.0
+ * @date 2026-03-24
+ */
+
+#include "app_hal.h"
+#include "hal_osd.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+#include <errno.h>
+#include <pthread.h>
+
+/*-----------------------------------------------------------------------------
+ *  Ingenic IMP includes and definitions
+ *----------------------------------------------------------------------------*/
+
+// Uncomment when IMP SDK is available
+// #include "imp/imp_osd.h"
+// #include "imp/imp_common.h"
+// #include "imp/imp_log.h"
+
+// For now, use stub definitions
+#define IMP_OSD_REGION_NUM_MAX 8
+#define IMP_OSD_GRAPHIC_NUM_MAX 32
+#define IMP_OSD_TEXT_NUM_MAX 16
+
+typedef void* IMPOSDGrp;
+typedef void* IMPOSDRegion;
+typedef void* IMPOSDGraphic;
+typedef void* IMPOSDText;
+
+typedef enum {
+    IMP_PIXFMT_ARGB1555 = 0,
+    IMP_PIXFMT_ARGB4444,
+    IMP_PIXFMT_ARGB8888,
+    IMP_PIXFMT_RGB565,
+    IMP_PIXFMT_RGB888,
+    IMP_PIXFMT_BGR888,
+} IMPPixelFormat;
+
+typedef struct {
+    int x;
+    int y;
+    int width;
+    int height;
+} IMPRect;
+
+typedef struct {
+    uint8_t a;
+    uint8_t r;
+    uint8_t g;
+    uint8_t b;
+} IMPColor;
+
+// IMP OSD API stub functions
+static int __attribute__((unused)) IMP_OSD_CreateGroup(IMPOSDGrp *grp, int maxRegionNum) { return 0; }
+static int __attribute__((unused)) IMP_OSD_DestroyGroup(IMPOSDGrp grp) { return 0; }
+static int __attribute__((unused)) IMP_OSD_CreateRegion(IMPOSDGrp grp, IMPOSDRegion *region, const IMPRect *rect, IMPPixelFormat fmt) { return 0; }
+static int __attribute__((unused)) IMP_OSD_DestroyRegion(IMPOSDGrp grp, IMPOSDRegion region) { return 0; }
+static int __attribute__((unused)) IMP_OSD_ShowRegion(IMPOSDGrp grp, IMPOSDRegion region) { return 0; }
+static int __attribute__((unused)) IMP_OSD_HideRegion(IMPOSDGrp grp, IMPOSDRegion region) { return 0; }
+static int __attribute__((unused)) IMP_OSD_SetRegionAlpha(IMPOSDGrp grp, IMPOSDRegion region, int alpha) { return 0; }
+static int __attribute__((unused)) IMP_OSD_SetRegionPosition(IMPOSDGrp grp, IMPOSDRegion region, const IMPRect *rect) { return 0; }
+static int __attribute__((unused)) IMP_OSD_CreateGraphic(IMPOSDGrp grp, IMPOSDRegion region, IMPOSDGraphic *graphic, const IMPRect *rect, IMPColor color) { return 0; }
+static int __attribute__((unused)) IMP_OSD_DestroyGraphic(IMPOSDGrp grp, IMPOSDRegion region, IMPOSDGraphic graphic) { return 0; }
+static int __attribute__((unused)) IMP_OSD_CreateText(IMPOSDGrp grp, IMPOSDRegion region, IMPOSDText *text, const IMPRect *rect, const char *str, IMPColor color, int fontsize) { return 0; }
+static int __attribute__((unused)) IMP_OSD_DestroyText(IMPOSDGrp grp, IMPOSDRegion region, IMPOSDText text) { return 0; }
+static int __attribute__((unused)) IMP_OSD_SetText(IMPOSDGrp grp, IMPOSDRegion region, IMPOSDText text, const char *str) { return 0; }
+
+/*-----------------------------------------------------------------------------
+ *  Platform-specific OSD implementation
+ *----------------------------------------------------------------------------*/
+
+// Platform-specific OSD region data
+typedef struct {
+    IMPOSDRegion imp_region;     // IMP OSD region
+    uint32_t region_id;          // HAL region ID
+    IMPRect imp_rect;            // IMP rectangle
+    IMPPixelFormat imp_format;   // IMP pixel format
+    bool visible;                // Region visibility
+    uint8_t alpha;               // Region alpha
+} ingenic_osd_region_t;
+
+// Platform OSD module state
+typedef struct {
+    bool initialized;
+    IMPOSDGrp imp_grp;           // IMP OSD group (shared by all regions)
+    ingenic_osd_region_t *regions;
+    uint32_t max_regions;
+    uint32_t active_regions;
+    pthread_mutex_t lock;
+} ingenic_osd_module_t;
+
+static ingenic_osd_module_t g_ingenic_osd = {
+    .initialized = false,
+    .imp_grp = NULL,
+    .regions = NULL,
+    .max_regions = 0,
+    .active_regions = 0,
+    .lock = PTHREAD_MUTEX_INITIALIZER
+};
+
+/**
+ * @brief Convert HAL pixel format to IMP pixel format
+ * 
+ * @param hal_format HAL pixel format
+ * @return IMPPixelFormat IMP pixel format (default: ARGB8888)
+ */
+static IMPPixelFormat hal_to_imp_pixel_format(hal_pixel_format_t hal_format)
+{
+    switch (hal_format) {
+        case HAL_PIXEL_FORMAT_ARGB_8888:
+            return IMP_PIXFMT_ARGB8888;
+        case HAL_PIXEL_FORMAT_ABGR_8888:
+            return IMP_PIXFMT_ARGB8888;  // IMP may not have ABGR, use ARGB
+        case HAL_PIXEL_FORMAT_RGB_888:
+            return IMP_PIXFMT_RGB888;
+        case HAL_PIXEL_FORMAT_BGR_888:
+            return IMP_PIXFMT_BGR888;
+        case HAL_PIXEL_FORMAT_YUV_SEMIPLANAR_420:
+        case HAL_PIXEL_FORMAT_YUV_PLANAR_420:
+            // IMP may not support YUV OSD directly, default to ARGB
+            return IMP_PIXFMT_ARGB8888;
+        default:
+            // Default to ARGB8888 for unsupported formats
+            return IMP_PIXFMT_ARGB8888;
+    }
+}
+
+/**
+ * @brief Convert HAL rectangle to IMP rectangle
+ * 
+ * @param hal_rect HAL rectangle
+ * @param imp_rect IMP rectangle
+ */
+static void hal_to_imp_rect(const hal_rect_t *hal_rect, IMPRect *imp_rect)
+{
+    if (!hal_rect || !imp_rect) {
+        return;
+    }
+    
+    imp_rect->x = hal_rect->x;
+    imp_rect->y = hal_rect->y;
+    imp_rect->width = hal_rect->width;
+    imp_rect->height = hal_rect->height;
+}
+
+/**
+ * @brief Convert HAL color to IMP color
+ * 
+ * @param hal_color HAL color
+ * @param imp_color IMP color
+ */
+static void __attribute__((unused)) hal_to_imp_color(const hal_osd_color_t *hal_color, IMPColor *imp_color)
+{
+    if (!hal_color || !imp_color) {
+        return;
+    }
+    
+    imp_color->a = hal_color->a;
+    imp_color->r = hal_color->r;
+    imp_color->g = hal_color->g;
+    imp_color->b = hal_color->b;
+}
+
+/**
+ * @brief Find platform region by HAL region ID
+ * 
+ * @param region_id HAL region ID
+ * @return Pointer to region or NULL if not found
+ */
+
+/**
+ * @brief Allocate a new platform region
+ * 
+ * @return Pointer to allocated region or NULL if failed
+ */
+static ingenic_osd_region_t *allocate_platform_region(void)
+{
+    if (!g_ingenic_osd.regions) {
+        return NULL;
+    }
+    
+    for (uint32_t i = 0; i < g_ingenic_osd.max_regions; i++) {
+        if (g_ingenic_osd.regions[i].region_id == 0) {
+            // Found free slot
+            return &g_ingenic_osd.regions[i];
+        }
+    }
+    
+    return NULL;
+}
+
+/*-----------------------------------------------------------------------------
+ *  Platform OSD API implementation
+ *----------------------------------------------------------------------------*/
+
+int hal_osd_platform_init(void)
+{
+    int ret = 0;
+    
+    pthread_mutex_lock(&g_ingenic_osd.lock);
+    
+    if (g_ingenic_osd.initialized) {
+        pthread_mutex_unlock(&g_ingenic_osd.lock);
+        return 0;
+    }
+    
+    // Initialize IMP OSD (stub)
+    // In real implementation:
+    // ret = IMP_OSD_CreateGroup(&g_ingenic_osd.imp_grp, IMP_OSD_REGION_NUM_MAX);
+    
+    if (ret < 0) {
+        printf("[INGENIC OSD] IMP OSD initialization failed: %d\n", ret);
+        pthread_mutex_unlock(&g_ingenic_osd.lock);
+        return ret;
+    }
+    
+    // Allocate memory for regions
+    g_ingenic_osd.max_regions = IMP_OSD_REGION_NUM_MAX;
+    g_ingenic_osd.regions = (ingenic_osd_region_t *)calloc(g_ingenic_osd.max_regions, sizeof(ingenic_osd_region_t));
+    if (!g_ingenic_osd.regions) {
+        printf("[INGENIC OSD] Failed to allocate region memory\n");
+        pthread_mutex_unlock(&g_ingenic_osd.lock);
+        return -1;
+    }
+    
+    g_ingenic_osd.initialized = true;
+    g_ingenic_osd.active_regions = 0;
+    
+    printf("[INGENIC OSD] Platform OSD initialized\n");
+    pthread_mutex_unlock(&g_ingenic_osd.lock);
+    
+    return 0;
+}
+
+int hal_osd_platform_deinit(void)
+{
+    pthread_mutex_lock(&g_ingenic_osd.lock);
+    
+    if (!g_ingenic_osd.initialized) {
+        pthread_mutex_unlock(&g_ingenic_osd.lock);
+        return 0;
+    }
+    
+    // Destroy all active regions
+    for (uint32_t i = 0; i < g_ingenic_osd.max_regions; i++) {
+        if (g_ingenic_osd.regions[i].region_id != 0) {
+            if (g_ingenic_osd.regions[i].imp_region) {
+                IMP_OSD_DestroyRegion(g_ingenic_osd.imp_grp, g_ingenic_osd.regions[i].imp_region);
+            }
+        }
+    }
+    
+    // Free region memory
+    if (g_ingenic_osd.regions) {
+        free(g_ingenic_osd.regions);
+        g_ingenic_osd.regions = NULL;
+    }
+    
+    // Destroy IMP OSD group
+    if (g_ingenic_osd.imp_grp) {
+        IMP_OSD_DestroyGroup(g_ingenic_osd.imp_grp);
+        g_ingenic_osd.imp_grp = NULL;
+    }
+    
+    g_ingenic_osd.initialized = false;
+    g_ingenic_osd.max_regions = 0;
+    g_ingenic_osd.active_regions = 0;
+    
+    printf("[INGENIC OSD] Platform OSD deinitialized\n");
+    pthread_mutex_unlock(&g_ingenic_osd.lock);
+    
+    return 0;
+}
+
+int platform_osd_init(void)
+{
+    return hal_osd_platform_init();
+}
+
+int platform_osd_deinit(void)
+{
+    return hal_osd_platform_deinit();
+}
+
+int platform_osd_create_region(void *region_ptr)
+{
+    osd_region_t *hal_region = (osd_region_t *)region_ptr;
+    ingenic_osd_region_t *platform_region = NULL;
+    int ret = 0;
+    
+    if (!hal_region) {
+        return -1;
+    }
+    
+    pthread_mutex_lock(&g_ingenic_osd.lock);
+    
+    if (!g_ingenic_osd.initialized) {
+        pthread_mutex_unlock(&g_ingenic_osd.lock);
+        return -1;
+    }
+    
+    // Allocate platform region
+    platform_region = allocate_platform_region();
+    if (!platform_region) {
+        pthread_mutex_unlock(&g_ingenic_osd.lock);
+        return -1;
+    }
+    
+    // Initialize platform region
+    platform_region->region_id = hal_region->region_id;
+    platform_region->visible = false;
+    platform_region->alpha = hal_region->config.alpha;
+    
+    // Convert HAL parameters to IMP
+    hal_to_imp_rect(&hal_region->config.rect, &platform_region->imp_rect);
+    platform_region->imp_format = hal_to_imp_pixel_format(hal_region->config.format);
+    
+    // Create IMP OSD region
+    ret = IMP_OSD_CreateRegion(g_ingenic_osd.imp_grp, &platform_region->imp_region, 
+                               &platform_region->imp_rect, platform_region->imp_format);
+    if (ret < 0) {
+        printf("[INGENIC OSD] Failed to create IMP region: %d\n", ret);
+        memset(platform_region, 0, sizeof(ingenic_osd_region_t));
+        pthread_mutex_unlock(&g_ingenic_osd.lock);
+        return ret;
+    }
+    
+    // Set region alpha if not default
+    if (platform_region->alpha != 255) {
+        IMP_OSD_SetRegionAlpha(g_ingenic_osd.imp_grp, platform_region->imp_region, platform_region->alpha);
+    }
+    
+    // Store platform private data in HAL region
+    hal_region->platform_priv = platform_region;
+    g_ingenic_osd.active_regions++;
+    
+    printf("[INGENIC OSD] Created platform region for HAL region %u\n", hal_region->region_id);
+    
+    pthread_mutex_unlock(&g_ingenic_osd.lock);
+    return 0;
+}
+
+int platform_osd_destroy_region(void *region_ptr)
+{
+    osd_region_t *hal_region = (osd_region_t *)region_ptr;
+    ingenic_osd_region_t *platform_region = NULL;
+    
+    if (!hal_region) {
+        return -1;
+    }
+    
+    platform_region = (ingenic_osd_region_t *)hal_region->platform_priv;
+    if (!platform_region) {
+        return -1;
+    }
+    
+    pthread_mutex_lock(&g_ingenic_osd.lock);
+    
+    if (!g_ingenic_osd.initialized) {
+        pthread_mutex_unlock(&g_ingenic_osd.lock);
+        return -1;
+    }
+    
+    // Destroy IMP OSD region
+    if (platform_region->imp_region) {
+        IMP_OSD_DestroyRegion(g_ingenic_osd.imp_grp, platform_region->imp_region);
+    }
+    
+    // Clear platform region data
+    memset(platform_region, 0, sizeof(ingenic_osd_region_t));
+    hal_region->platform_priv = NULL;
+    g_ingenic_osd.active_regions--;
+    
+    printf("[INGENIC OSD] Destroyed platform region for HAL region %u\n", hal_region->region_id);
+    
+    pthread_mutex_unlock(&g_ingenic_osd.lock);
+    return 0;
+}
+
+int platform_osd_set_region_visibility(void *region_ptr, bool visible)
+{
+    osd_region_t *hal_region = (osd_region_t *)region_ptr;
+    ingenic_osd_region_t *platform_region = NULL;
+    int ret = 0;
+    
+    if (!hal_region) {
+        return -1;
+    }
+    
+    platform_region = (ingenic_osd_region_t *)hal_region->platform_priv;
+    if (!platform_region) {
+        return -1;
+    }
+    
+    pthread_mutex_lock(&g_ingenic_osd.lock);
+    
+    if (!g_ingenic_osd.initialized) {
+        pthread_mutex_unlock(&g_ingenic_osd.lock);
+        return -1;
+    }
+    
+    if (platform_region->visible == visible) {
+        pthread_mutex_unlock(&g_ingenic_osd.lock);
+        return 0;
+    }
+    
+    if (visible) {
+        ret = IMP_OSD_ShowRegion(g_ingenic_osd.imp_grp, platform_region->imp_region);
+    } else {
+        ret = IMP_OSD_HideRegion(g_ingenic_osd.imp_grp, platform_region->imp_region);
+    }
+    
+    if (ret < 0) {
+        printf("[INGENIC OSD] Failed to set region visibility: %d\n", ret);
+        pthread_mutex_unlock(&g_ingenic_osd.lock);
+        return ret;
+    }
+    
+    platform_region->visible = visible;
+    printf("[INGENIC OSD] Region %u visibility set to %s\n", 
+           hal_region->region_id, visible ? "visible" : "hidden");
+    
+    pthread_mutex_unlock(&g_ingenic_osd.lock);
+    return 0;
+}
+
+/*-----------------------------------------------------------------------------
+ *  HAL System Functions (stubs for now)
+ *----------------------------------------------------------------------------*/
+
+hal_err_t hal_sys_init(const hal_sys_config_t *config)
+{
+    printf("[INGENIC] System initialization (stub)\n");
+    return HAL_OK;
+}
+
+hal_err_t hal_sys_deinit(void)
+{
+    printf("[INGENIC] System deinitialization (stub)\n");
+    return HAL_OK;
+}
+
+hal_err_t hal_sys_get_platform(char *platform_name, uint32_t buf_size)
+{
+    if (!platform_name || buf_size == 0) {
+        return HAL_ERR_PARAM;
+    }
+    
+    const char *name = "Ingenic T31";
+    size_t name_len = strlen(name);
+    
+    if (name_len >= buf_size) {
+        return HAL_ERR_PARAM;
+    }
+    
+    strncpy(platform_name, name, buf_size - 1);
+    platform_name[buf_size - 1] = '\0';
+    
+    return HAL_OK;
+}
+
+// Add other HAL function stubs as needed...

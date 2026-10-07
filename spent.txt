@@ -1,0 +1,42 @@
+===========================================
+Trying endpoint: https://api.deepseek.com/user/balance
+DEBUG: 收到原始响应内容:
+{"is_available":true,"balance_infos":[{"currency":"CNY","total_balance":"30.78","granted_balance":"0.00","topped_up_balance":"30.78"}]}
+===========================================
+Valid JSON response received (length: 135)
+Appended 26_05_15:30.78元 to /home/rainti/deepseek/spent.txt
+===========================================
+Trying endpoint: https://api.deepseek.com/user/balance
+DEBUG: 收到原始响应内容:
+{"is_available":true,"balance_infos":[{"currency":"CNY","total_balance":"30.78","granted_balance":"0.00","topped_up_balance":"30.78"}]}
+===========================================
+Valid JSON response received (length: 135)
+Appended 26_05_15:30.78元 to /home/rainti/deepseek/spent.txt
+===========================================
+Trying endpoint: https://api.deepseek.com/user/balance
+DEBUG: 收到原始响应内容:
+{"is_available":true,"balance_infos":[{"currency":"CNY","total_balance":"30.78","granted_balance":"0.00","topped_up_balance":"30.78"}]}
+===========================================
+Valid JSON response received (length: 135)
+Appended 26_05_16:30.78元 to /home/rainti/deepseek/spent.txt
+===========================================
+Trying endpoint: https://api.deepseek.com/user/balance
+DEBUG: 收到原始响应内容:
+{"is_available":true,"balance_infos":[{"currency":"CNY","total_balance":"30.78","granted_balance":"0.00","topped_up_balance":"30.78"}]}
+===========================================
+Valid JSON response received (length: 135)
+Appended 26_05_17:30.78元 to /home/rainti/deepseek/spent.txt
+===========================================
+Trying endpoint: https://api.deepseek.com/user/balance
+DEBUG: 收到原始响应内容:
+{"is_available":true,"balance_infos":[{"currency":"CNY","total_balance":"30.78","granted_balance":"0.00","topped_up_balance":"30.78"}]}
+===========================================
+Valid JSON response received (length: 135)
+Appended 26_05_17:30.78元 to /home/rainti/deepseek/spent.txt
+===========================================
+Trying endpoint: https://api.deepseek.com/user/balance
+DEBUG: 收到原始响应内容:
+{"is_available":true,"balance_infos":[{"currency":"CNY","total_balance":"30.78","granted_balance":"0.00","topped_up_balance":"30.78"}]}
+===========================================
+Valid JSON response received (length: 135)
+Appended 26_05_18:30.78元 to /home/rainti/deepseek/spent.txt

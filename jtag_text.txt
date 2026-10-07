@@ -1,0 +1,20 @@
+By ID Code Mismatch                      x
+|    Q     Mismatch of ID Codes.
+~- BSDL Information --
+Manufacturer: ARM Ltd.
+ID Code: XXxx1011101000000000010001110111
+~ Detected Device Information —
+Manufacturer: Triscend
+
+ID Code: 00001011111010101101000111010011
+
+Do you want to continue assigning this BSDL file?
+
+[Ver] Ne
+
+ 
+
+ 
+
+ 
+
